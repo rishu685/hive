@@ -149,8 +149,16 @@ def delete_aden_api_key() -> None:
 
         storage = EncryptedFileStorage()
         storage.delete(ADEN_CREDENTIAL_ID)
+    except ImportError:
+        logger.debug("EncryptedFileStorage not available for credential deletion")
+    except (FileNotFoundError, KeyError):
+        logger.debug("Credential %s not found in encrypted store", ADEN_CREDENTIAL_ID)
     except Exception:
-        logger.debug("Could not delete %s from encrypted store", ADEN_CREDENTIAL_ID)
+        logger.warning(
+            "Unexpected error deleting %s from encrypted store", 
+            ADEN_CREDENTIAL_ID, 
+            exc_info=True
+        )
 
     os.environ.pop(ADEN_ENV_VAR, None)
 
@@ -167,8 +175,16 @@ def _read_credential_key_file() -> str | None:
             value = CREDENTIAL_KEY_PATH.read_text(encoding="utf-8").strip()
             if value:
                 return value
+    except (FileNotFoundError, PermissionError) as e:
+        logger.debug("Could not read %s: %s", CREDENTIAL_KEY_PATH, e)
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning("Error reading credential file %s: %s", CREDENTIAL_KEY_PATH, e)
     except Exception:
-        logger.debug("Could not read %s", CREDENTIAL_KEY_PATH)
+        logger.warning(
+            "Unexpected error reading credential file %s", 
+            CREDENTIAL_KEY_PATH, 
+            exc_info=True
+        )
     return None
 
 
@@ -196,6 +212,14 @@ def _read_aden_from_encrypted_store() -> str | None:
         cred = storage.load(ADEN_CREDENTIAL_ID)
         if cred:
             return cred.get_key("api_key")
+    except ImportError:
+        logger.debug("EncryptedFileStorage not available for credential loading")
+    except (FileNotFoundError, KeyError):
+        logger.debug("Credential %s not found in encrypted store", ADEN_CREDENTIAL_ID)
     except Exception:
-        logger.debug("Could not load %s from encrypted store", ADEN_CREDENTIAL_ID)
+        logger.warning(
+            "Unexpected error loading %s from encrypted store", 
+            ADEN_CREDENTIAL_ID, 
+            exc_info=True
+        )
     return None
